@@ -3,8 +3,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ModerationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CommunitiesService } from '../communities/communities.service';
+import { ModerationService } from '../moderation/moderation.service';
 import { CreatePostDto } from './dto/create-post.dto';
 
 export interface PostWithScore {
@@ -17,6 +19,7 @@ export interface PostWithScore {
   createdAt: Date;
   score: number;
   myVote: number;
+  moderationStatus: ModerationStatus;
 }
 
 @Injectable()
@@ -24,11 +27,15 @@ export class PostsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly communitiesService: CommunitiesService,
+    private readonly moderationService: ModerationService,
   ) {}
 
   async create(communityId: string, authorId: string, dto: CreatePostDto) {
     await this.communitiesService.findByIdOrThrow(communityId);
     await this.communitiesService.assertMember(authorId, communityId);
+
+    const { toxicityScore, moderationStatus } =
+      await this.moderationService.scoreContent(dto.body);
 
     return this.prisma.post.create({
       data: {
@@ -36,6 +43,8 @@ export class PostsService {
         authorId,
         body: dto.body,
         imageUrl: dto.imageUrl,
+        toxicityScore,
+        moderationStatus,
       },
     });
   }
@@ -48,7 +57,13 @@ export class PostsService {
     await this.communitiesService.assertMember(requesterId, communityId);
 
     const posts = await this.prisma.post.findMany({
-      where: { communityId },
+      where: {
+        communityId,
+        OR: [
+          { moderationStatus: ModerationStatus.APPROVED },
+          { authorId: requesterId },
+        ],
+      },
       orderBy: { createdAt: 'desc' },
       include: { author: { select: { username: true } }, votes: true },
     });
@@ -64,6 +79,7 @@ export class PostsService {
       score: post.votes.reduce((sum, vote) => sum + vote.value, 0),
       myVote:
         post.votes.find((vote) => vote.userId === requesterId)?.value ?? 0,
+      moderationStatus: post.moderationStatus,
     }));
   }
 

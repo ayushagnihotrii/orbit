@@ -8,7 +8,9 @@ import {
   ConnectionRequest,
   ConnectionStatus,
   DirectMessage,
+  ModerationStatus,
 } from '@prisma/client';
+import { ModerationService } from '../moderation/moderation.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { CreateConnectionRequestDto } from './dto/create-connection-request.dto';
@@ -19,6 +21,7 @@ export class ConnectionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly usersService: UsersService,
+    private readonly moderationService: ModerationService,
   ) {}
 
   async sendRequest(
@@ -161,12 +164,16 @@ export class ConnectionsService {
     dto: SendDirectMessageDto,
   ): Promise<DirectMessage> {
     await this.assertAcceptedParticipant(connectionId, senderId);
+    const { toxicityScore, moderationStatus } =
+      await this.moderationService.scoreContent(dto.body);
 
     return this.prisma.directMessage.create({
       data: {
         connectionId,
         senderId,
         body: dto.body,
+        toxicityScore,
+        moderationStatus,
       },
     });
   }
@@ -177,7 +184,13 @@ export class ConnectionsService {
   ): Promise<DirectMessage[]> {
     await this.assertAcceptedParticipant(connectionId, userId);
     return this.prisma.directMessage.findMany({
-      where: { connectionId },
+      where: {
+        connectionId,
+        OR: [
+          { moderationStatus: ModerationStatus.APPROVED },
+          { senderId: userId },
+        ],
+      },
       orderBy: { createdAt: 'asc' },
     });
   }

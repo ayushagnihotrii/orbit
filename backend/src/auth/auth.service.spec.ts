@@ -22,6 +22,7 @@ const baseUser: User = {
   age: 16,
   role: Role.STUDENT,
   isPrivate: true,
+  isSuspended: false,
   createdAt: new Date(),
 };
 
@@ -46,6 +47,7 @@ describe('AuthService', () => {
         age: user.age,
         role: user.role,
         isPrivate: user.isPrivate,
+        isSuspended: user.isSuspended,
         createdAt: user.createdAt,
       })),
     };

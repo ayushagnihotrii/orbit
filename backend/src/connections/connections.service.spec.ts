@@ -4,7 +4,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConnectionStatus } from '@prisma/client';
+import { ConnectionStatus, ModerationStatus } from '@prisma/client';
+import { ModerationService } from '../moderation/moderation.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { ConnectionsService } from './connections.service';
@@ -35,12 +36,19 @@ describe('ConnectionsService — DMs are only unlocked by an accepted connection
       },
     };
     usersService = { findByUsername: jest.fn() };
+    const moderationService = {
+      scoreContent: jest.fn().mockResolvedValue({
+        toxicityScore: 0,
+        moderationStatus: ModerationStatus.APPROVED,
+      }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ConnectionsService,
         { provide: PrismaService, useValue: prisma },
         { provide: UsersService, useValue: usersService },
+        { provide: ModerationService, useValue: moderationService },
       ],
     }).compile();
 

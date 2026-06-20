@@ -1,6 +1,8 @@
 import { ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { ModerationStatus } from '@prisma/client';
 import { CommunitiesService } from '../communities/communities.service';
+import { ModerationService } from '../moderation/moderation.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PostsService } from './posts.service';
 
@@ -31,12 +33,19 @@ describe('PostsService — community membership gating', () => {
       },
       postVote: { upsert: jest.fn() },
     };
+    const moderationService = {
+      scoreContent: jest.fn().mockResolvedValue({
+        toxicityScore: 0,
+        moderationStatus: ModerationStatus.APPROVED,
+      }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PostsService,
         { provide: PrismaService, useValue: prisma },
         { provide: CommunitiesService, useValue: communitiesService },
+        { provide: ModerationService, useValue: moderationService },
       ],
     }).compile();
 

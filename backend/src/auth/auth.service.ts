@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { User } from '@prisma/client';
@@ -41,6 +45,9 @@ export class AuthService {
     const user = await this.usersService.findByEmail(dto.email);
     if (!user || !(await argon2.verify(user.passwordHash, dto.password))) {
       throw new UnauthorizedException('Invalid email or password.');
+    }
+    if (user.isSuspended) {
+      throw new ForbiddenException('Your account has been suspended.');
     }
 
     return {

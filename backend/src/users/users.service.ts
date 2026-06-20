@@ -23,6 +23,7 @@ export class UsersService {
       age: user.age,
       role: user.role,
       isPrivate: user.isPrivate,
+      isSuspended: user.isSuspended,
       createdAt: user.createdAt,
     };
   }

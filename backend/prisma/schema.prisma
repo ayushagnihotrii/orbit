@@ -23,6 +23,32 @@ enum ConnectionStatus {
   DECLINED
 }
 
+// Auto-moderation state for a single piece of content (post / chat message / DM).
+enum ModerationStatus {
+  APPROVED
+  PENDING
+  REMOVED
+}
+
+enum ContentType {
+  POST
+  CHAT_MESSAGE
+  DIRECT_MESSAGE
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+}
+
+enum ModerationActionType {
+  APPROVE
+  REMOVE
+  WARN
+  SUSPEND
+  UNSUSPEND
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -31,6 +57,7 @@ model User {
   age          Int
   role         Role     @default(STUDENT)
   isPrivate    Boolean  @default(true)
+  isSuspended  Boolean  @default(false)
   createdAt    DateTime @default(now())
 
   createdCommunities  Community[]
@@ -42,6 +69,10 @@ model User {
   sentConnectionRequests     ConnectionRequest[] @relation("RequestedConnections")
   receivedConnectionRequests ConnectionRequest[] @relation("ReceivedConnections")
   directMessages             DirectMessage[]
+
+  reports                Report[]           @relation("ReportsFiled")
+  moderationActionsTaken ModerationAction[] @relation("ModeratorActions")
+  moderationActionsAgainst ModerationAction[] @relation("TargetUserActions")
 }
 
 // Reddit-style interest groups / school clubs — visible, joinable group spaces.
@@ -72,14 +103,16 @@ model CommunityMembership {
 }
 
 model Post {
-  id          String   @id @default(uuid())
-  communityId String
-  community   Community @relation(fields: [communityId], references: [id])
-  authorId    String
-  author      User     @relation(fields: [authorId], references: [id])
-  body        String
-  imageUrl    String?
-  createdAt   DateTime @default(now())
+  id               String           @id @default(uuid())
+  communityId      String
+  community        Community        @relation(fields: [communityId], references: [id])
+  authorId         String
+  author           User             @relation(fields: [authorId], references: [id])
+  body             String
+  imageUrl         String?
+  createdAt        DateTime         @default(now())
+  moderationStatus ModerationStatus @default(APPROVED)
+  toxicityScore    Float            @default(0)
 
   votes PostVote[]
 }
@@ -111,13 +144,15 @@ model ChatRoom {
 }
 
 model ChatMessage {
-  id         String   @id @default(uuid())
-  chatRoomId String
-  chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id])
-  authorId   String
-  author     User     @relation(fields: [authorId], references: [id])
-  body       String
-  createdAt  DateTime @default(now())
+  id               String           @id @default(uuid())
+  chatRoomId       String
+  chatRoom         ChatRoom         @relation(fields: [chatRoomId], references: [id])
+  authorId         String
+  author           User             @relation(fields: [authorId], references: [id])
+  body             String
+  createdAt        DateTime         @default(now())
+  moderationStatus ModerationStatus @default(APPROVED)
+  toxicityScore    Float            @default(0)
 }
 
 // A connection request doubles as the connection itself once ACCEPTED — that
@@ -138,11 +173,42 @@ model ConnectionRequest {
 }
 
 model DirectMessage {
-  id           String            @id @default(uuid())
-  connectionId String
-  connection   ConnectionRequest @relation(fields: [connectionId], references: [id])
-  senderId     String
-  sender       User              @relation(fields: [senderId], references: [id])
-  body         String
-  createdAt    DateTime          @default(now())
+  id               String            @id @default(uuid())
+  connectionId     String
+  connection       ConnectionRequest @relation(fields: [connectionId], references: [id])
+  senderId         String
+  sender           User              @relation(fields: [senderId], references: [id])
+  body             String
+  createdAt        DateTime          @default(now())
+  moderationStatus ModerationStatus  @default(APPROVED)
+  toxicityScore    Float             @default(0)
+}
+
+// Polymorphic by convention (contentType + contentId), not a DB-level FK —
+// Prisma has no native cross-table relation for "one of several content tables".
+model Report {
+  id          String       @id @default(uuid())
+  reporterId  String
+  reporter    User         @relation("ReportsFiled", fields: [reporterId], references: [id])
+  contentType ContentType
+  contentId   String
+  reason      String
+  status      ReportStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+
+  @@unique([reporterId, contentType, contentId])
+}
+
+// Append-only audit trail for every moderator action.
+model ModerationAction {
+  id           String               @id @default(uuid())
+  moderatorId  String
+  moderator    User                 @relation("ModeratorActions", fields: [moderatorId], references: [id])
+  action       ModerationActionType
+  contentType  ContentType?
+  contentId    String?
+  targetUserId String?
+  targetUser   User?                @relation("TargetUserActions", fields: [targetUserId], references: [id])
+  reason       String?
+  createdAt    DateTime             @default(now())
 }

@@ -4,8 +4,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ChatMessage, ChatRoom } from '@prisma/client';
+import { ChatMessage, ChatRoom, ModerationStatus } from '@prisma/client';
 import { CommunitiesService } from '../communities/communities.service';
+import { ModerationService } from '../moderation/moderation.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateChatRoomDto } from './dto/create-chat-room.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
@@ -15,6 +16,7 @@ export class ChatService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly communitiesService: CommunitiesService,
+    private readonly moderationService: ModerationService,
   ) {}
 
   async listRooms(communityId: string, userId: string): Promise<ChatRoom[]> {
@@ -78,7 +80,13 @@ export class ChatService {
   async listMessages(roomId: string, userId: string): Promise<ChatMessage[]> {
     await this.assertRoomMember(roomId, userId);
     return this.prisma.chatMessage.findMany({
-      where: { chatRoomId: roomId },
+      where: {
+        chatRoomId: roomId,
+        OR: [
+          { moderationStatus: ModerationStatus.APPROVED },
+          { authorId: userId },
+        ],
+      },
       orderBy: { createdAt: 'asc' },
     });
   }
@@ -89,12 +97,16 @@ export class ChatService {
     dto: CreateMessageDto,
   ): Promise<ChatMessage> {
     await this.assertRoomMember(roomId, userId);
+    const { toxicityScore, moderationStatus } =
+      await this.moderationService.scoreContent(dto.body);
 
     return this.prisma.chatMessage.create({
       data: {
         chatRoomId: roomId,
         authorId: userId,
         body: dto.body,
+        toxicityScore,
+        moderationStatus,
       },
     });
   }

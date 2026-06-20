@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { ChatModule } from './chat/chat.module';
 import { CommunitiesModule } from './communities/communities.module';
 import { ConnectionsModule } from './connections/connections.module';
+import { ModerationModule } from './moderation/moderation.module';
 import { PostsModule } from './posts/posts.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
@@ -20,6 +21,7 @@ import { UsersModule } from './users/users.module';
     PostsModule,
     ChatModule,
     ConnectionsModule,
+    ModerationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
