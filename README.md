@@ -164,6 +164,12 @@ pnpm dev:frontend
 pnpm dev:ai
 ```
 
+## Deploying
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the full Render (backend + ai-service
++ Postgres) + Vercel (frontend) deployment guide, including a
+`render.yaml` Blueprint that provisions everything in one step.
+
 ## Try it out
 
 After seeding, every account below uses the password `Password123!`:
