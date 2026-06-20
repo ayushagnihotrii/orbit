@@ -1,5 +1,7 @@
 # SafeSpace
 
+[![CI](https://github.com/ayushagnihotrii/orbit/actions/workflows/ci.yml/badge.svg)](https://github.com/ayushagnihotrii/orbit/actions/workflows/ci.yml)
+
 A safety-first social platform prototype for students aged 13+.
 
 > **⚠️ PROTOTYPE — NOT FOR REAL MINORS.** This is a portfolio/proof-of-concept
