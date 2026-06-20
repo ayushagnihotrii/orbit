@@ -35,6 +35,7 @@ export interface QueueItem extends ContentRecord {
   contentType: ContentType;
   reportCount: number;
   reportReasons: string[];
+  authorUsername: string;
 }
 
 @Injectable()
@@ -159,7 +160,7 @@ export class ModerationService {
       this.prisma.report.findMany({ where: { status: ReportStatus.PENDING } }),
     ]);
 
-    const queueByKey = new Map<string, QueueItem>();
+    const queueByKey = new Map<string, Omit<QueueItem, 'authorUsername'>>();
 
     type RawRecord = {
       id: string;
@@ -217,9 +218,22 @@ export class ModerationService {
       }
     }
 
-    return Array.from(queueByKey.values()).sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+    const items = Array.from(queueByKey.values());
+    const authorIds = [...new Set(items.map((item) => item.authorId))];
+    const authors = await this.prisma.user.findMany({
+      where: { id: { in: authorIds } },
+      select: { id: true, username: true },
+    });
+    const usernameById = new Map(
+      authors.map((author) => [author.id, author.username]),
     );
+
+    return items
+      .map((item) => ({
+        ...item,
+        authorUsername: usernameById.get(item.authorId) ?? 'unknown',
+      }))
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
   private async markReportsReviewed(
@@ -358,6 +372,10 @@ export class ModerationService {
   listAuditLog() {
     return this.prisma.moderationAction.findMany({
       orderBy: { createdAt: 'desc' },
+      include: {
+        moderator: { select: { username: true } },
+        targetUser: { select: { username: true } },
+      },
     });
   }
 }

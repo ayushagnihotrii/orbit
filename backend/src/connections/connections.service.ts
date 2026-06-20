@@ -105,10 +105,16 @@ export class ConnectionsService {
     });
   }
 
+  private readonly withUsernames = {
+    requester: { select: { username: true } },
+    recipient: { select: { username: true } },
+  };
+
   listIncoming(userId: string) {
     return this.prisma.connectionRequest.findMany({
       where: { recipientId: userId, status: ConnectionStatus.PENDING },
       orderBy: { createdAt: 'desc' },
+      include: this.withUsernames,
     });
   }
 
@@ -116,17 +122,27 @@ export class ConnectionsService {
     return this.prisma.connectionRequest.findMany({
       where: { requesterId: userId, status: ConnectionStatus.PENDING },
       orderBy: { createdAt: 'desc' },
+      include: this.withUsernames,
     });
   }
 
-  listAccepted(userId: string) {
-    return this.prisma.connectionRequest.findMany({
+  async listAccepted(userId: string) {
+    const connections = await this.prisma.connectionRequest.findMany({
       where: {
         status: ConnectionStatus.ACCEPTED,
         OR: [{ requesterId: userId }, { recipientId: userId }],
       },
       orderBy: { respondedAt: 'desc' },
+      include: this.withUsernames,
     });
+
+    return connections.map((connection) => ({
+      ...connection,
+      otherUsername:
+        connection.requesterId === userId
+          ? connection.recipient.username
+          : connection.requester.username,
+    }));
   }
 
   private async getRequestOrThrow(

@@ -1,5 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { Role, User } from '@prisma/client';
+import * as argon2 from 'argon2';
 import { PrismaService } from '../prisma/prisma.service';
 
 export type SafeUser = Omit<User, 'passwordHash'>;
@@ -65,5 +67,21 @@ export class UsersService {
       orderBy: { createdAt: 'desc' },
     });
     return users.map((user) => this.toSafeUser(user));
+  }
+
+  // Anonymizes rather than hard-deletes: community posts/messages keep referential
+  // integrity, but the account's email/username/password are scrubbed and login is
+  // disabled (isSuspended also gates JwtStrategy + login, so this takes effect immediately).
+  async deleteAccount(userId: string): Promise<void> {
+    const suffix = randomUUID().slice(0, 8);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        email: `deleted-${suffix}@safespace.invalid`,
+        username: `deleted-${suffix}`,
+        passwordHash: await argon2.hash(randomUUID()),
+        isSuspended: true,
+      },
+    });
   }
 }

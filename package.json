@@ -6,10 +6,10 @@
   "scripts": {
     "dev:frontend": "pnpm --filter frontend dev",
     "dev:backend": "pnpm --filter backend start:dev",
-    "dev:ai": "cd ai-service && uvicorn app.main:app --reload --port 8001",
+    "dev:ai": "cd ai-service && .venv/bin/uvicorn app.main:app --reload --port 8001",
     "lint": "pnpm -r lint",
     "format": "prettier --write .",
-    "db:up": "docker compose up -d postgres",
+    "db:up": "docker compose up -d postgres redis",
     "db:down": "docker compose down"
   },
   "devDependencies": {

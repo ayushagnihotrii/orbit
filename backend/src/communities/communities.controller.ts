@@ -28,13 +28,16 @@ export class CommunitiesController {
   }
 
   @Get()
-  findAll(): Promise<Community[]> {
-    return this.communitiesService.findAll();
+  findAll(@CurrentUser() user: SafeUser) {
+    return this.communitiesService.findAllWithMembership(user.id);
   }
 
   @Get(':communityId')
-  findOne(@Param('communityId') communityId: string): Promise<Community> {
-    return this.communitiesService.findByIdOrThrow(communityId);
+  findOne(
+    @CurrentUser() user: SafeUser,
+    @Param('communityId') communityId: string,
+  ) {
+    return this.communitiesService.findOneWithMembership(communityId, user.id);
   }
 
   @Post(':communityId/membership')

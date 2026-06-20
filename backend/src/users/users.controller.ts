@@ -1,4 +1,11 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+} from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -15,6 +22,13 @@ export class UsersController {
   @Get('me')
   getMe(@CurrentUser() user: SafeUser): SafeUser {
     return user;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('me')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deleteMe(@CurrentUser() user: SafeUser): Promise<void> {
+    return this.usersService.deleteAccount(user.id);
   }
 
   // RBAC demo: only moderators/admins may list all users.

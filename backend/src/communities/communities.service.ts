@@ -53,6 +53,24 @@ export class CommunitiesService {
     return this.prisma.community.findMany({ orderBy: { createdAt: 'desc' } });
   }
 
+  async findAllWithMembership(userId: string) {
+    const communities = await this.prisma.community.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: { _count: { select: { memberships: true } } },
+    });
+    const memberships = await this.prisma.communityMembership.findMany({
+      where: { userId },
+      select: { communityId: true },
+    });
+    const memberOf = new Set(memberships.map((m) => m.communityId));
+
+    return communities.map((community) => ({
+      ...community,
+      memberCount: community._count.memberships,
+      isMember: memberOf.has(community.id),
+    }));
+  }
+
   async findByIdOrThrow(communityId: string): Promise<Community> {
     const community = await this.prisma.community.findUnique({
       where: { id: communityId },
@@ -61,6 +79,22 @@ export class CommunitiesService {
       throw new NotFoundException('Community not found.');
     }
     return community;
+  }
+
+  async findOneWithMembership(communityId: string, userId: string) {
+    const community = await this.prisma.community.findUnique({
+      where: { id: communityId },
+      include: { _count: { select: { memberships: true } } },
+    });
+    if (!community) {
+      throw new NotFoundException('Community not found.');
+    }
+
+    return {
+      ...community,
+      memberCount: community._count.memberships,
+      isMember: await this.isMember(userId, communityId),
+    };
   }
 
   async isMember(userId: string, communityId: string): Promise<boolean> {

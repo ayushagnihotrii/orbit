@@ -77,7 +77,7 @@ export class ChatService {
     return room;
   }
 
-  async listMessages(roomId: string, userId: string): Promise<ChatMessage[]> {
+  async listMessages(roomId: string, userId: string) {
     await this.assertRoomMember(roomId, userId);
     return this.prisma.chatMessage.findMany({
       where: {
@@ -88,6 +88,7 @@ export class ChatService {
         ],
       },
       orderBy: { createdAt: 'asc' },
+      include: { author: { select: { username: true } } },
     });
   }
 
