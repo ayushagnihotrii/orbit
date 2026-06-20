@@ -3,6 +3,10 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { ChatModule } from './chat/chat.module';
+import { CommunitiesModule } from './communities/communities.module';
+import { ConnectionsModule } from './connections/connections.module';
+import { PostsModule } from './posts/posts.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 
@@ -12,6 +16,10 @@ import { UsersModule } from './users/users.module';
     PrismaModule,
     UsersModule,
     AuthModule,
+    CommunitiesModule,
+    PostsModule,
+    ChatModule,
+    ConnectionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

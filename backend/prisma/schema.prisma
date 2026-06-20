@@ -17,6 +17,12 @@ enum Role {
   ADMIN
 }
 
+enum ConnectionStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -26,4 +32,117 @@ model User {
   role         Role     @default(STUDENT)
   isPrivate    Boolean  @default(true)
   createdAt    DateTime @default(now())
+
+  createdCommunities  Community[]
+  communityMembership CommunityMembership[]
+  posts               Post[]
+  postVotes           PostVote[]
+  chatMessages        ChatMessage[]
+
+  sentConnectionRequests     ConnectionRequest[] @relation("RequestedConnections")
+  receivedConnectionRequests ConnectionRequest[] @relation("ReceivedConnections")
+  directMessages             DirectMessage[]
+}
+
+// Reddit-style interest groups / school clubs — visible, joinable group spaces.
+// Not a stranger-DM surface: posts and chat inside are only visible to members.
+model Community {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  memberships CommunityMembership[]
+  posts       Post[]
+  chatRooms   ChatRoom[]
+}
+
+model CommunityMembership {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id])
+  joinedAt    DateTime @default(now())
+
+  @@unique([userId, communityId])
+}
+
+model Post {
+  id          String   @id @default(uuid())
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id])
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  body        String
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+
+  votes PostVote[]
+}
+
+// A single up/down vote covers both "likes" and downvotes without a redundant reactions table.
+model PostVote {
+  id        String   @id @default(uuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  value     Int
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+}
+
+// Visible group chat rooms scoped to a community — never a private 1-on-1 channel.
+model ChatRoom {
+  id          String   @id @default(uuid())
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id])
+  name        String
+  createdAt   DateTime @default(now())
+
+  messages ChatMessage[]
+
+  @@unique([communityId, name])
+}
+
+model ChatMessage {
+  id         String   @id @default(uuid())
+  chatRoomId String
+  chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id])
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id])
+  body       String
+  createdAt  DateTime @default(now())
+}
+
+// A connection request doubles as the connection itself once ACCEPTED — that
+// acceptance is the only thing that ever unlocks direct messaging between two users.
+model ConnectionRequest {
+  id          String           @id @default(uuid())
+  requesterId String
+  requester   User             @relation("RequestedConnections", fields: [requesterId], references: [id])
+  recipientId String
+  recipient   User             @relation("ReceivedConnections", fields: [recipientId], references: [id])
+  status      ConnectionStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  respondedAt DateTime?
+
+  messages DirectMessage[]
+
+  @@unique([requesterId, recipientId])
+}
+
+model DirectMessage {
+  id           String            @id @default(uuid())
+  connectionId String
+  connection   ConnectionRequest @relation(fields: [connectionId], references: [id])
+  senderId     String
+  sender       User              @relation(fields: [senderId], references: [id])
+  body         String
+  createdAt    DateTime          @default(now())
 }
