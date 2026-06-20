@@ -1,0 +1,12 @@
+// Prisma schema for SafeSpace.
+// Data models are intentionally minimal — see CORE PRINCIPLE: DATA MINIMIZATION in the root README.
+// User and domain models are added in Phase 2+.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
